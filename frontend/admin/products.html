@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sarees — Nandini Unique Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="toolbar">
+      <div><span class="eyebrow">Catalog</span><h2 style="margin:0">Sarees / Products</h2></div>
+      <button class="btn btn-primary" id="add-btn">+ Add New Saree / Dress</button>
+    </div>
+    <div class="table-wrap card" style="padding:0">
+      <table>
+        <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+        <tbody id="product-rows"><tr><td colspan="7" class="muted" style="padding:20px">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="product-modal">
+  <div class="modal" style="max-width:760px">
+    <button class="close-x" id="close-modal">✕</button>
+    <h3 id="modal-title">Add New Product</h3>
+    <form id="product-form" enctype="multipart/form-data">
+      <input type="hidden" name="id" />
+      <div class="field-row">
+        <div class="field"><label>Saree/Dress Name</label><input required name="name" /></div>
+        <div class="field">
+          <label>Product Type</label>
+          <select name="productType" id="product-type-select">
+            <option value="Saree">Saree</option>
+            <option value="Dress">Dress</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Type / Fabric Name — type your own (e.g. Kanjivaram, Tussar, Anarkali, Party Wear Gown)</label>
+        <input name="category" list="admin-category-suggestions" placeholder="e.g. Kanjivaram" />
+        <datalist id="admin-category-suggestions"></datalist>
+        <p class="hint">Not limited to a fixed list — type any saree/dress type and it'll be remembered for next time.</p>
+      </div>
+      <div class="field"><label>Description</label><textarea name="description" rows="3"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Colour</label><input name="color" placeholder="e.g. Maroon" /></div>
+        <div class="field"><label>Fabric</label><input name="fabric" placeholder="e.g. Pure Silk" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Base Price (₹)</label><input required type="number" name="basePrice" min="0" /></div>
+        <div class="field"><label>Discount %</label><input type="number" name="discountPercent" min="0" max="90" value="0" /></div>
+      </div>
+      <div class="field">
+        <label>Overall Stock (used for quick reference)</label>
+        <input type="number" name="stock" min="0" value="0" />
+      </div>
+
+      <div class="field">
+        <label>Sizes / Options — set how much price changes per size (the seller decides this)</label>
+        <div id="size-rows" class="stack" style="gap:8px"></div>
+        <button type="button" id="add-size-row" class="btn btn-ghost btn-sm" style="margin-top:6px">+ Add Size Option</button>
+      </div>
+
+      <div class="field">
+        <label>Other Details (e.g. Work type, Blouse included, Occasion)</label>
+        <div id="attr-rows" class="stack" style="gap:8px"></div>
+        <button type="button" id="add-attr-row" class="btn btn-ghost btn-sm" style="margin-top:6px">+ Add Detail</button>
+      </div>
+
+      <div class="field">
+        <label>Photos (you can add more later when new stock arrives)</label>
+        <div id="existing-images" class="row" style="flex-wrap:wrap; margin-bottom:8px"></div>
+        <input type="file" name="images" accept="image/*" multiple />
+      </div>
+
+      <div class="row" style="margin:10px 0 18px">
+        <label class="row" style="gap:6px"><input type="checkbox" name="isFeatured" /> Featured on homepage</label>
+        <label class="row" style="gap:6px"><input type="checkbox" name="isActive" checked /> Visible on storefront</label>
+      </div>
+
+      <p id="form-error" class="error-msg"></p>
+      <button class="btn btn-primary btn-block" type="submit">Save Saree</button>
+    </form>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+  if (!guardAdmin()) { /* redirected */ }
+  renderAdminSidebar("products");
+
+  let products = [];
+  let existingImagesForEdit = [];
+
+  async function loadCategorySuggestions() {
+    try {
+      const { categories } = await api("/products/meta/categories", { auth: false });
+      qs("#admin-category-suggestions").innerHTML = categories.map(c => `<option value="${c}"></option>`).join("");
+    } catch (e) { /* optional */ }
+  }
+  loadCategorySuggestions();
+
+  function sizeRow(size = "", priceModifier = 0, stock = 0) {
+    const row = document.createElement("div");
+    row.className = "row size-row";
+    row.innerHTML = `
+      <input placeholder="Size name (e.g. Free Size)" class="s-name" value="${size}" style="flex:2; padding:9px; border:1px solid var(--line); border-radius:4px" />
+      <input placeholder="Price change ₹" type="number" class="s-mod" value="${priceModifier}" style="flex:1; padding:9px; border:1px solid var(--line); border-radius:4px" />
+      <input placeholder="Stock" type="number" class="s-stock" value="${stock}" style="flex:1; padding:9px; border:1px solid var(--line); border-radius:4px" />
+      <button type="button" class="btn btn-ghost btn-sm remove-row">✕</button>
+    `;
+    row.querySelector(".remove-row").addEventListener("click", () => row.remove());
+    return row;
+  }
+  function attrRow(key = "", value = "") {
+    const row = document.createElement("div");
+    row.className = "row attr-row";
+    row.innerHTML = `
+      <input placeholder="Detail name (e.g. Work)" class="a-key" value="${key}" style="flex:1; padding:9px; border:1px solid var(--line); border-radius:4px" />
+      <input placeholder="Value (e.g. Zari Border)" class="a-val" value="${value}" style="flex:1; padding:9px; border:1px solid var(--line); border-radius:4px" />
+      <button type="button" class="btn btn-ghost btn-sm remove-row">✕</button>
+    `;
+    row.querySelector(".remove-row").addEventListener("click", () => row.remove());
+    return row;
+  }
+
+  qs("#add-size-row").addEventListener("click", () => qs("#size-rows").appendChild(sizeRow()));
+  qs("#add-attr-row").addEventListener("click", () => qs("#attr-rows").appendChild(attrRow()));
+
+  function openModal(product = null) {
+    qs("#product-form").reset();
+    qs("#size-rows").innerHTML = "";
+    qs("#attr-rows").innerHTML = "";
+    qs("#existing-images").innerHTML = "";
+    qs("#form-error").textContent = "";
+    existingImagesForEdit = [];
+
+    if (product) {
+      qs("#modal-title").textContent = "Edit Product";
+      const f = qs("#product-form");
+      f.id.value = product._id;
+      f.name.value = product.name;
+      f.productType.value = product.productType || "Saree";
+      f.category.value = product.category || "";
+      f.description.value = product.description || "";
+      f.color.value = product.color || "";
+      f.fabric.value = product.fabric || "";
+      f.basePrice.value = product.basePrice;
+      f.discountPercent.value = product.discountPercent || 0;
+      f.stock.value = product.stock || 0;
+      f.isFeatured.checked = product.isFeatured;
+      f.isActive.checked = product.isActive;
+
+      (product.sizeOptions.length ? product.sizeOptions : [{}]).forEach(s => qs("#size-rows").appendChild(sizeRow(s.size, s.priceModifier, s.stock)));
+      Object.entries(product.attributes || {}).forEach(([k, v]) => qs("#attr-rows").appendChild(attrRow(k, v)));
+
+      existingImagesForEdit = [...(product.images || [])];
+      renderExistingImages();
+    } else {
+      qs("#modal-title").textContent = "Add New Product";
+      qs("#product-form").id.value = "";
+      qs("#size-rows").appendChild(sizeRow("Free Size", 0, 10));
+    }
+    qs("#product-modal").classList.add("open");
+  }
+
+  function renderExistingImages() {
+    qs("#existing-images").innerHTML = existingImagesForEdit.map((img, i) => `
+      <div style="position:relative">
+        <img src="${API_ORIGIN}${img}" style="width:60px;height:78px;object-fit:cover;border-radius:4px;border:1px solid var(--line)" />
+        <button type="button" data-i="${i}" class="rm-img" style="position:absolute; top:-6px; right:-6px; background:var(--danger); color:#fff; border:none; border-radius:50%; width:20px; height:20px; font-size:.7rem">✕</button>
+      </div>
+    `).join("");
+    qsa(".rm-img").forEach(b => b.addEventListener("click", () => {
+      existingImagesForEdit.splice(Number(b.dataset.i), 1);
+      renderExistingImages();
+    }));
+  }
+
+  qs("#add-btn").addEventListener("click", () => openModal());
+  qs("#close-modal").addEventListener("click", () => qs("#product-modal").classList.remove("open"));
+
+  qs("#product-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    qs("#form-error").textContent = "";
+    const form = e.target;
+    const fd = new FormData();
+    fd.append("name", form.name.value);
+    fd.append("productType", form.productType.value);
+    fd.append("category", form.category.value);
+    fd.append("description", form.description.value);
+    fd.append("color", form.color.value);
+    fd.append("fabric", form.fabric.value);
+    fd.append("basePrice", form.basePrice.value);
+    fd.append("discountPercent", form.discountPercent.value);
+    fd.append("stock", form.stock.value);
+    fd.append("isFeatured", form.isFeatured.checked);
+    fd.append("isActive", form.isActive.checked);
+
+    const sizeOptions = qsa(".size-row").map(r => ({
+      size: r.querySelector(".s-name").value,
+      priceModifier: Number(r.querySelector(".s-mod").value || 0),
+      stock: Number(r.querySelector(".s-stock").value || 0),
+    })).filter(s => s.size);
+    fd.append("sizeOptions", JSON.stringify(sizeOptions));
+
+    const attributes = {};
+    qsa(".attr-row").forEach(r => {
+      const k = r.querySelector(".a-key").value.trim();
+      const v = r.querySelector(".a-val").value.trim();
+      if (k) attributes[k] = v;
+    });
+    fd.append("attributes", JSON.stringify(attributes));
+
+    const id = form.id.value;
+    if (id) fd.append("existingImages", JSON.stringify(existingImagesForEdit));
+
+    const files = form.images.files;
+    for (const file of files) fd.append("images", file);
+
+    try {
+      if (id) await api(`/products/${id}`, { method: "PUT", body: fd, isForm: true });
+      else await api("/products", { method: "POST", body: fd, isForm: true });
+      qs("#product-modal").classList.remove("open");
+      loadProducts();
+    } catch (err) {
+      qs("#form-error").textContent = err.message;
+    }
+  });
+
+  async function loadProducts() {
+    try {
+      products = (await api("/products/admin/all")).products;
+      qs("#product-rows").innerHTML = products.length ? products.map(p => `
+        <tr>
+          <td><img src="${p.images[0] ? '${API_ORIGIN}'+p.images[0] : 'https://placehold.co/60x80/6e1e32/e8c874?text=NU'}" class="thumb-sm" /></td>
+          <td>${p.name}</td>
+          <td>${p.productType || ""}${p.category ? " · " + p.category : ""}</td>
+          <td>${money(p.basePrice)}${p.discountPercent ? ` <span class="muted">(-${p.discountPercent}%)</span>` : ""}</td>
+          <td>${p.stock}</td>
+          <td>${p.isActive ? '<span class="pill status-Delivered">Live</span>' : '<span class="pill status-Cancelled">Hidden</span>'}</td>
+          <td class="row">
+            <button class="btn btn-outline btn-sm edit-btn" data-id="${p._id}">Edit</button>
+            <button class="btn btn-ghost btn-sm hide-btn" data-id="${p._id}">${p.isActive ? 'Hide' : 'Delete'}</button>
+          </td>
+        </tr>
+      `).join("") : `<tr><td colspan="7" class="muted" style="padding:20px">No products added yet. Click "+ Add New Saree / Dress" to get started.</td></tr>`;
+
+      qsa(".edit-btn").forEach(b => b.addEventListener("click", () => openModal(products.find(p => p._id === b.dataset.id))));
+      qsa(".hide-btn").forEach(b => b.addEventListener("click", async () => {
+        if (!confirm("Remove this saree from the storefront?")) return;
+        await api(`/products/${b.dataset.id}`, { method: "DELETE" });
+        loadProducts();
+      }));
+    } catch (e) {
+      qs("#product-rows").innerHTML = `<tr><td colspan="7" class="error-msg">${e.message}</td></tr>`;
+    }
+  }
+  loadProducts();
+</script>
+</body>
+</html>

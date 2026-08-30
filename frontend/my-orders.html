@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>My Orders — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <h2>My Orders</h2>
+  <div id="orders-root"><p class="muted">Loading your orders…</p></div>
+</main>
+
+<div class="modal-backdrop" id="detail-modal">
+  <div class="modal">
+    <button class="close-x" id="close-modal">✕</button>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("");
+  renderFooter();
+  renderWaFloat();
+
+  if (!isLoggedIn()) window.location.href = "login.html?next=my-orders.html";
+
+  function img(path) { return path ? `${API_ORIGIN}${path}` : "https://placehold.co/80x100/6e1e32/e8c874?text=NU"; }
+
+  async function load() {
+    try {
+      const { orders } = await api("/orders/my");
+      if (!orders.length) {
+        qs("#orders-root").innerHTML = `<div class="empty-state"><div class="icon">📦</div><p>You haven't placed any orders yet.</p><a href="shop.html" class="btn btn-primary">Browse Sarees</a></div>`;
+        return;
+      }
+      qs("#orders-root").innerHTML = orders.map(o => `
+        <div class="card" style="margin-bottom:16px">
+          <div class="row between" style="flex-wrap:wrap; gap:10px">
+            <div>
+              <b>Order #${o._id.slice(-6).toUpperCase()}</b>
+              <p class="muted" style="margin:2px 0 0; font-size:.82rem">Placed on ${new Date(o.createdAt).toLocaleDateString("en-IN", {day:'numeric',month:'short',year:'numeric'})}</p>
+            </div>
+            <div class="row">
+              <span class="${statusPillClass(o.orderStatus)}">${o.orderStatus}</span>
+              <span class="pill pay-${o.payment.status}">Payment: ${o.payment.status}</span>
+            </div>
+          </div>
+          <div class="row" style="margin-top:12px; overflow-x:auto">
+            ${o.items.map(it => `<img src="${img(it.image)}" class="thumb-sm" title="${it.name}" />`).join("")}
+          </div>
+          <div class="row between" style="margin-top:12px">
+            <b>${money(o.totalAmount)}</b>
+            <div class="row">
+              <button class="btn btn-outline btn-sm view-btn" data-id="${o._id}">View Details</button>
+              ${["Placed","Confirmed"].includes(o.orderStatus) ? `<button class="btn btn-ghost btn-sm cancel-btn" data-id="${o._id}">Cancel</button>` : ""}
+            </div>
+          </div>
+        </div>
+      `).join("");
+
+      qsa(".view-btn").forEach(b => b.addEventListener("click", () => openDetail(b.dataset.id, orders)));
+      qsa(".cancel-btn").forEach(b => b.addEventListener("click", () => cancelOrder(b.dataset.id)));
+    } catch (e) {
+      qs("#orders-root").innerHTML = `<p class="error-msg">${e.message}</p>`;
+    }
+  }
+
+  function openDetail(id, orders) {
+    const o = orders.find(x => x._id === id);
+    qs("#modal-body").innerHTML = `
+      <h3>Order #${o._id.slice(-6).toUpperCase()}</h3>
+      <p class="${statusPillClass(o.orderStatus)}" style="display:inline-block">${o.orderStatus}</p>
+      ${o.trackingNote ? `<p class="muted">📍 ${o.trackingNote}</p>` : ""}
+      <h4 style="margin-top:18px; font-size:.95rem">Status Timeline</h4>
+      <ul class="stack" style="gap:6px; margin-bottom:16px">
+        ${o.statusHistory.map(h => `<li class="muted" style="font-size:.85rem">• ${h.status} — ${new Date(h.at).toLocaleString("en-IN")} ${h.note ? `(${h.note})` : ""}</li>`).join("")}
+      </ul>
+      <h4 style="font-size:.95rem">Items</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th>Item</th><th>Size</th><th>Qty</th><th>Price</th></tr></thead>
+        <tbody>${o.items.map(it => `<tr><td><img src="${img(it.image)}" class="thumb-sm" /></td><td>${it.name}</td><td>${it.size}</td><td>${it.quantity}</td><td>${money(it.price)}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <div class="row between" style="margin-top:12px">
+        <span>Payment (${o.payment.method})</span>
+        <span class="pill pay-${o.payment.status}">${o.payment.status}${o.payment.transactionId ? ` · Ref: ${o.payment.transactionId}` : ""}</span>
+      </div>
+      <div class="row between" style="font-weight:700; margin-top:8px"><span>Total</span><span>${money(o.totalAmount)}</span></div>
+      <div class="row" style="margin-top:20px">
+        <a class="btn btn-whatsapp btn-sm" target="_blank" href="${waLink(STORE_WHATSAPP_NUMBER, `Hi, I'd like an update on my order #${o._id.slice(-6).toUpperCase()}.`)}">💬 Ask about this order</a>
+        <a class="btn btn-outline btn-sm" href="contact.html?order=${o._id}">Raise a Complaint</a>
+      </div>
+    `;
+    qs("#detail-modal").classList.add("open");
+  }
+
+  async function cancelOrder(id) {
+    if (!confirm("Cancel this order?")) return;
+    try {
+      await api(`/orders/${id}/cancel`, { method: "PUT" });
+      load();
+    } catch (e) { alert(e.message); }
+  }
+
+  qs("#close-modal").addEventListener("click", () => qs("#detail-modal").classList.remove("open"));
+  load();
+</script>
+</body>
+</html>

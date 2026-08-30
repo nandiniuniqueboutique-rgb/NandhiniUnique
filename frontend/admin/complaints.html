@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Queries & Complaints — Nandini Unique Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="toolbar">
+      <div><span class="eyebrow">Support Inbox</span><h2 style="margin:0">Queries & Complaints</h2></div>
+      <select id="status-filter" class="btn btn-ghost" style="border:1px solid var(--line)">
+        <option value="">All</option><option>Open</option><option>In Progress</option><option>Resolved</option>
+      </select>
+    </div>
+    <div class="stack" id="complaint-list"><p class="muted">Loading…</p></div>
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+  if (!guardAdmin()) { }
+  renderAdminSidebar("complaints");
+
+  async function load() {
+    const status = qs("#status-filter").value;
+    qs("#complaint-list").innerHTML = `<p class="muted">Loading…</p>`;
+    try {
+      const { complaints } = await api(`/complaints/admin/all${status ? `?status=${status}` : ""}`);
+      qs("#complaint-list").innerHTML = complaints.length ? complaints.map(c => `
+        <div class="card">
+          <div class="row between" style="flex-wrap:wrap">
+            <div>
+              <b>${c.subject}</b> <span class="pill" style="background:var(--blush); color:var(--maroon-dark)">${c.type}</span>
+              <p class="muted" style="margin:2px 0 0; font-size:.82rem">${c.name} · ${c.email}${c.phone ? " · "+c.phone : ""} · ${new Date(c.createdAt).toLocaleString("en-IN")}</p>
+            </div>
+            <span class="pill status-${c.status.replace(/\s+/g,'-')}">${c.status}</span>
+          </div>
+          <p style="margin:10px 0">${c.message}</p>
+          ${c.reply ? `<div class="card" style="background:var(--blush)"><b>Your reply:</b> ${c.reply}</div>` : ""}
+          <div class="row" style="margin-top:10px; flex-wrap:wrap">
+            <select class="status-select" data-id="${c._id}">
+              <option ${c.status==="Open"?"selected":""}>Open</option>
+              <option ${c.status==="In Progress"?"selected":""}>In Progress</option>
+              <option ${c.status==="Resolved"?"selected":""}>Resolved</option>
+            </select>
+            <input class="reply-input" data-id="${c._id}" placeholder="Type a reply to email the customer…" style="flex:1; min-width:200px; padding:9px; border:1px solid var(--line); border-radius:4px" />
+            <button class="btn btn-primary btn-sm save-btn" data-id="${c._id}">Save</button>
+            <a class="btn btn-whatsapp btn-sm" target="_blank" href="${waLink(c.phone, `Hi ${c.name}, regarding your message "${c.subject}": `)}">💬 Reply on WhatsApp</a>
+          </div>
+        </div>
+      `).join("") : `<p class="muted">No queries here.</p>`;
+
+      qsa(".save-btn").forEach(b => b.addEventListener("click", async () => {
+        const id = b.dataset.id;
+        const statusSel = document.querySelector(`.status-select[data-id="${id}"]`);
+        const replyInp = document.querySelector(`.reply-input[data-id="${id}"]`);
+        await api(`/complaints/${id}`, { method: "PUT", body: { status: statusSel.value, reply: replyInp.value } });
+        load();
+      }));
+    } catch (e) {
+      qs("#complaint-list").innerHTML = `<p class="error-msg">${e.message}</p>`;
+    }
+  }
+  qs("#status-filter").addEventListener("change", load);
+  load();
+</script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checkout — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section" id="checkout-root">
+  <h2>Checkout</h2>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("shop");
+  renderFooter();
+  renderWaFloat();
+
+  if (!isLoggedIn()) {
+    window.location.href = "login.html?next=checkout.html";
+  }
+
+  const cart = getCart();
+  let coupon = null;
+
+  function subtotal() { return cart.reduce((s, c) => s + c.price * c.quantity, 0); }
+  function shippingFee() { return subtotal() >= 1500 ? 0 : 79; }
+  function discountAmount() { return coupon ? Math.round(subtotal() * coupon.discountPercent / 100) : 0; }
+  function total() { return Math.max(0, subtotal() + shippingFee() - discountAmount()); }
+
+  function renderSummary() {
+    const el = qs("#summary-box");
+    if (!el) return;
+    el.innerHTML = `
+      <div class="row between"><span class="muted">Subtotal</span><span>${money(subtotal())}</span></div>
+      <div class="row between"><span class="muted">Shipping</span><span>${shippingFee() === 0 ? "Free" : money(shippingFee())}</span></div>
+      ${coupon ? `<div class="row between" style="color:var(--success)"><span>Coupon (${coupon.code})</span><span>-${money(discountAmount())}</span></div>` : ""}
+      <hr style="border:none;border-top:1px solid var(--line); margin:12px 0" />
+      <div class="row between" style="font-weight:700; font-size:1.1rem"><span>Total to Pay</span><span>${money(total())}</span></div>
+    `;
+    const totalEl = qs("#upi-amount");
+    if (totalEl) totalEl.textContent = money(total());
+  }
+
+  function build() {
+    if (!cart.length) {
+      qs("#checkout-root").innerHTML = `<h2>Checkout</h2><div class="empty-state"><div class="icon">🛍️</div><p>Your cart is empty.</p><a href="shop.html" class="btn btn-primary">Browse Sarees</a></div>`;
+      return;
+    }
+    const user = getUser();
+    qs("#checkout-root").innerHTML = `
+      <h2>Checkout</h2>
+      <div class="grid" style="grid-template-columns: 1.3fr 1fr; align-items:flex-start; gap:30px;">
+        <form id="checkout-form" class="stack">
+          <div class="card">
+            <h3 style="font-size:1.05rem">Shipping Address</h3>
+            <div class="field"><label>Full Name</label><input required name="name" value="${user?.name || ''}" /></div>
+            <div class="field-row">
+              <div class="field"><label>Phone</label><input required name="phone" value="${user?.phone || ''}" /></div>
+              <div class="field"><label>Pincode</label><input required name="pincode" /></div>
+            </div>
+            <div class="field"><label>Address Line 1</label><input required name="line1" /></div>
+            <div class="field"><label>Address Line 2 (optional)</label><input name="line2" /></div>
+            <div class="field-row">
+              <div class="field"><label>City</label><input required name="city" /></div>
+              <div class="field"><label>State</label><input required name="state" /></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:1.05rem">Coupon Code</h3>
+            <div class="row">
+              <input id="coupon-input" placeholder="e.g. FESTIVE10" style="flex:1; padding:11px; border:1px solid var(--line); border-radius:4px" />
+              <button type="button" id="apply-coupon" class="btn btn-outline btn-sm">Apply</button>
+            </div>
+            <p id="coupon-msg" class="hint"></p>
+          </div>
+
+          <div class="card">
+            <h3 style="font-size:1.05rem">Payment</h3>
+            <div class="field">
+              <label>Payment Method</label>
+              <select name="method" id="pay-method">
+                <option value="UPI">UPI (QR Code)</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Cash on Delivery">Cash on Delivery</option>
+              </select>
+            </div>
+            <div id="upi-block" class="card" style="background:var(--blush)">
+              <p style="margin:0 0 8px">Scan this QR / pay to UPI ID <b>nandiniunique@upi</b> for <b id="upi-amount">₹0</b>, then enter the reference number below.</p>
+              <div style="width:150px;height:150px;background:#fff;border:1px dashed var(--maroon); display:flex; align-items:center; justify-content:center; margin-bottom:10px; font-size:.75rem; text-align:center; padding:8px;">
+                [ UPI QR code placeholder — replace with your real UPI QR image ]
+              </div>
+              <div class="field"><label>Transaction ID / UTR Number</label><input name="transactionId" placeholder="e.g. 302516xxxxxx" /></div>
+            </div>
+            <div id="bank-block" class="card" style="background:var(--blush); display:none">
+              <p style="margin:0 0 8px">Transfer <b id="bank-amount">₹0</b> to:<br/>A/c Name: Nandini Unique · A/c No: 000000000000 · IFSC: ABCD0123456</p>
+              <div class="field"><label>Transaction ID / UTR Number</label><input name="transactionIdBank" placeholder="e.g. 302516xxxxxx" /></div>
+            </div>
+          </div>
+
+          <p id="order-error" class="error-msg"></p>
+          <button class="btn btn-primary btn-block" type="submit">Place Order</button>
+        </form>
+
+        <div class="card" id="summary-box"></div>
+      </div>
+    `;
+
+    renderSummary();
+
+    qs("#pay-method").addEventListener("change", (e) => {
+      qs("#upi-block").style.display = e.target.value === "UPI" ? "block" : "none";
+      qs("#bank-block").style.display = e.target.value === "Bank Transfer" ? "block" : "none";
+    });
+
+    qs("#apply-coupon").addEventListener("click", async () => {
+      const code = qs("#coupon-input").value.trim();
+      if (!code) return;
+      try {
+        const { offer } = await api(`/offers/validate/${code}`, { auth: false });
+        coupon = offer;
+        qs("#coupon-msg").className = "success-msg";
+        qs("#coupon-msg").textContent = `Applied "${offer.title}" — ${offer.discountPercent}% off`;
+        renderSummary();
+      } catch (e) {
+        coupon = null;
+        qs("#coupon-msg").className = "error-msg";
+        qs("#coupon-msg").textContent = e.message;
+        renderSummary();
+      }
+    });
+
+    qs("#checkout-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      qs("#order-error").textContent = "";
+      const fd = new FormData(e.target);
+      const method = fd.get("method");
+      const transactionId = method === "Bank Transfer" ? fd.get("transactionIdBank") : fd.get("transactionId");
+
+      const payload = {
+        items: cart.map(c => ({ product: c.productId, size: c.size, quantity: c.quantity })),
+        shippingAddress: {
+          name: fd.get("name"), phone: fd.get("phone"), line1: fd.get("line1"), line2: fd.get("line2"),
+          city: fd.get("city"), state: fd.get("state"), pincode: fd.get("pincode"),
+        },
+        payment: { method, transactionId: transactionId || "" },
+        couponCode: coupon?.code || "",
+        discountAmount: discountAmount(),
+        shippingFee: shippingFee(),
+      };
+
+      try {
+        const { order } = await api("/orders", { method: "POST", body: payload });
+        localStorage.removeItem("nu_cart");
+        window.location.href = `order-success.html?id=${order._id}`;
+      } catch (err) {
+        qs("#order-error").textContent = err.message;
+      }
+    });
+  }
+
+  build();
+</script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nandini Unique — Handpicked Sarees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<section class="hero">
+  <div class="container">
+    <div>
+      <span class="eyebrow">Woven With Care Since Day One</span>
+      <h1>Sarees that carry a story in every thread</h1>
+      <p class="lede">Kanjivaram silks, Banarasi weaves, handloom cottons, everyday elegance — and ready-to-wear dresses too. Handpicked by Nandini Unique and delivered to your doorstep.</p>
+      <div class="cta-row">
+        <a href="shop.html" class="btn btn-gold">Shop The Collection</a>
+        <a href="offers.html" class="btn btn-outline" style="border-color:var(--gold-light); color:var(--gold-light)">View Offers</a>
+      </div>
+    </div>
+    <div class="hero-motif">
+      <span>Nandini<br/>Unique</span>
+    </div>
+  </div>
+</section>
+
+<div id="offer-strip"></div>
+
+<main>
+  <section class="section container">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Explore</span>
+        <h2>Shop by Type</h2>
+      </div>
+    </div>
+    <div class="grid cols-2" id="type-grid"></div>
+    <div class="row" id="category-pills" style="flex-wrap:wrap; margin-top:18px"></div>
+  </section>
+
+  <section class="section container">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Curated For You</span>
+        <h2>Featured Sarees</h2>
+      </div>
+      <a href="shop.html" class="btn btn-outline btn-sm">View All →</a>
+    </div>
+    <div class="grid cols-4" id="featured-grid">
+      <p class="muted">Loading sarees…</p>
+    </div>
+  </section>
+
+  <section class="section container">
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; background:linear-gradient(135deg,var(--blush),#fff)">
+      <div>
+        <h3 style="margin-bottom:4px">Have a question about sizing, fabric or an order?</h3>
+        <p class="muted" style="margin:0">Reach us instantly on WhatsApp, or drop us a message — we usually reply within a few hours.</p>
+      </div>
+      <div class="row">
+        <a id="wa-help-link" href="#" target="_blank" class="btn btn-whatsapp">💬 WhatsApp Us</a>
+        <a href="contact.html" class="btn btn-outline">Contact Page</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("home");
+  renderFooter();
+  renderWaFloat();
+  qs("#wa-help-link").href = waLink(STORE_WHATSAPP_NUMBER, "Hi Nandini Unique, I have a question.");
+
+  qs("#type-grid").innerHTML = `
+    <a href="shop.html?type=Saree" class="product-card" style="align-items:center; text-align:center; padding:34px 10px;">
+      <div style="font-size:2.2rem">🥻</div>
+      <h3 style="margin-top:8px">Sarees</h3>
+      <p class="meta">Silk, cotton, Kanjivaram, Banarasi & more</p>
+    </a>
+    <a href="shop.html?type=Dress" class="product-card" style="align-items:center; text-align:center; padding:34px 10px;">
+      <div style="font-size:2.2rem">👗</div>
+      <h3 style="margin-top:8px">Dresses</h3>
+      <p class="meta">Ready-to-wear styles, S–XL</p>
+    </a>
+  `;
+
+  async function loadCategoryPills() {
+    try {
+      const { categories } = await api("/products/meta/categories", { auth: false });
+      qs("#category-pills").innerHTML = categories.map(c =>
+        `<a href="shop.html?category=${encodeURIComponent(c)}" class="btn btn-outline btn-sm">${c}</a>`
+      ).join("");
+    } catch (e) { /* optional, fail silently */ }
+  }
+  loadCategoryPills();
+
+  async function loadOffersStrip() {
+    try {
+      const { offers } = await api("/offers", { auth: false });
+      const el = document.createElement("div");
+      if (offers.length) {
+        el.className = "offer-strip";
+        el.innerHTML = `<div class="container">${offers.map(o => `<span>🎉 ${o.title}${o.code ? ` — use code <b>${o.code}</b>` : ""} (${o.discountPercent}% off)</span>`).join("")}</div>`;
+        qs("#offer-strip").appendChild(el);
+      }
+    } catch (e) { /* offers are optional, fail silently on homepage */ }
+  }
+
+  let featuredProducts = [];
+  function productCard(p) {
+    const price = Math.round(p.basePrice * (1 - (p.discountPercent||0)/100));
+    const img = p.images && p.images[0] ? `${API_ORIGIN}${p.images[0]}` : "https://placehold.co/400x520/6e1e32/e8c874?text=Nandini+Unique";
+    return `
+      <div class="product-card">
+        <a href="product.html?id=${p._id}" class="card-link">
+          <div class="thumb">
+            ${p.discountPercent ? `<span class="discount-flag">${p.discountPercent}% OFF</span>` : ""}
+            <img src="${img}" alt="${p.name}" loading="lazy" />
+          </div>
+          <div class="body">
+            <span class="cat">${p.productType || ""}${p.category ? " · " + p.category : ""}</span>
+            <h3>${p.name}</h3>
+            <div class="price-row">
+              <span class="now">${money(price)}</span>
+              ${p.discountPercent ? `<span class="was">${money(p.basePrice)}</span>` : ""}
+            </div>
+          </div>
+        </a>
+        <div class="card-actions">
+          <button class="btn btn-gold btn-sm btn-block quick-order-btn" data-id="${p._id}">🛒 Quick Order</button>
+        </div>
+      </div>`;
+  }
+
+  function wireQuickOrderButtons(list) {
+    qsa(".quick-order-btn").forEach(btn => btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const product = list.find(p => p._id === btn.dataset.id);
+      if (product) openQuickOrder(product);
+    }));
+  }
+
+  async function loadFeatured() {
+    try {
+      const { products } = await api("/products?featured=true", { auth: false });
+      const list = products.length ? products : (await api("/products", { auth: false })).products;
+      featuredProducts = list.slice(0,8);
+      qs("#featured-grid").innerHTML = featuredProducts.map(productCard).join("") || `<p class="muted">No sarees added yet — check back soon!</p>`;
+      wireQuickOrderButtons(featuredProducts);
+    } catch (e) {
+      qs("#featured-grid").innerHTML = `<p class="error-msg">Could not load sarees. Is the backend server running on port 5000?</p>`;
+    }
+  }
+
+  loadOffersStrip();
+  loadFeatured();
+</script>
+</body>
+</html>

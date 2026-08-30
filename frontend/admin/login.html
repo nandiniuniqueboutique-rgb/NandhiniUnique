@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Owner Login — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body style="background:var(--maroon-dark); min-height:100vh; display:flex; align-items:center; justify-content:center;">
+
+<form id="login-form" class="form-card">
+  <h2 class="center" style="margin-bottom:6px">Nandini Unique</h2>
+  <p class="center muted" style="margin-top:0 0 20px">Owner / Admin Panel</p>
+  <div class="field"><label>Email</label><input required type="email" name="email" value="owner@nandiniunique.com" /></div>
+  <div class="field"><label>Password</label><input required type="password" name="password" /></div>
+  <p id="login-error" class="error-msg"></p>
+  <button class="btn btn-primary btn-block" type="submit">Log In to Dashboard</button>
+  <p class="hint center" style="margin-top:14px">Run <code>npm run seed</code> in /backend for the default admin login.</p>
+  <p class="hint center"><a href="../index.html" style="text-decoration:underline">← Back to storefront</a></p>
+</form>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script>
+  qs("#login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    qs("#login-error").textContent = "";
+    const fd = new FormData(e.target);
+    try {
+      const { token, user } = await api("/auth/login", {
+        method: "POST", auth: false,
+        body: { email: fd.get("email"), password: fd.get("password") },
+      });
+      if (user.role !== "admin") {
+        qs("#login-error").textContent = "This login is for the store owner only.";
+        return;
+      }
+      saveSession(token, user);
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      qs("#login-error").textContent = err.message;
+    }
+  });
+</script>
+</body>
+</html>

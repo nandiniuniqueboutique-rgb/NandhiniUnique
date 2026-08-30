@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track Your Order — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <div class="section-head"><div><span class="eyebrow">Where's my saree?</span><h2>Track Your Order</h2></div></div>
+
+  <div class="grid" style="grid-template-columns: 380px 1fr; align-items:flex-start; gap:30px">
+    <form id="track-form" class="form-card" style="margin:0">
+      <div class="field"><label>Order ID</label><input required id="t-id" placeholder="Paste from your confirmation email" /></div>
+      <div class="field"><label>Phone Number used at checkout</label><input required id="t-phone" placeholder="10-digit phone number" /></div>
+      <button class="btn btn-primary btn-block" type="submit">Track Order</button>
+      <p class="hint" style="margin-top:10px">You can also just <a href="my-orders.html" style="text-decoration:underline">log in and view all your orders</a>.</p>
+    </form>
+    <div id="result-box"></div>
+  </div>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("track");
+  renderFooter();
+  renderWaFloat();
+
+  qs("#track-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = qs("#t-id").value.trim();
+    const phone = qs("#t-phone").value.trim();
+    qs("#result-box").innerHTML = `<p class="muted">Searching…</p>`;
+    try {
+      const { order: o } = await api(`/orders/track/${id}?phone=${encodeURIComponent(phone)}`, { auth: false });
+      qs("#result-box").innerHTML = `
+        <div class="card">
+          <div class="row between" style="flex-wrap:wrap">
+            <h3 style="margin:0">Order #${o._id.slice(-6).toUpperCase()}</h3>
+            <span class="${statusPillClass(o.orderStatus)}">${o.orderStatus}</span>
+          </div>
+          ${o.trackingNote ? `<p class="muted">📍 Current location/note: ${o.trackingNote}</p>` : ""}
+          <h4 style="margin-top:16px; font-size:.9rem">Status Timeline</h4>
+          <ul class="stack" style="gap:6px">
+            ${o.statusHistory.map(h => `<li class="muted" style="font-size:.85rem">• <b style="color:var(--ink)">${h.status}</b> — ${new Date(h.at).toLocaleString("en-IN")}</li>`).join("")}
+          </ul>
+          <div class="row between" style="margin-top:16px; font-weight:700"><span>Total Amount</span><span>${money(o.totalAmount)}</span></div>
+          <div class="row between"><span class="muted">Payment Status</span><span class="pill pay-${o.payment.status}">${o.payment.status}</span></div>
+        </div>
+      `;
+    } catch (err) {
+      qs("#result-box").innerHTML = `<p class="error-msg">${err.message}</p>`;
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Your Cart — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <h2>Your Cart</h2>
+  <div id="cart-root"></div>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("shop");
+  renderFooter();
+  renderWaFloat();
+
+  function img(path) { return path ? `${API_ORIGIN}${path}` : "https://placehold.co/120x160/6e1e32/e8c874?text=NU"; }
+
+  function render() {
+    const cart = getCart();
+    if (!cart.length) {
+      qs("#cart-root").innerHTML = `<div class="empty-state"><div class="icon">🛍️</div><p>Your cart is empty.</p><a href="shop.html" class="btn btn-primary">Browse Sarees</a></div>`;
+      return;
+    }
+    const subtotal = cart.reduce((s, c) => s + c.price * c.quantity, 0);
+
+    qs("#cart-root").innerHTML = `
+      <div class="grid" style="grid-template-columns: 2fr 1fr; align-items:flex-start; gap:30px;">
+        <div class="stack">
+          ${cart.map(c => `
+            <div class="card row between" data-pid="${c.productId}" data-size="${c.size}">
+              <div class="row">
+                <img src="${img(c.image)}" class="thumb-sm" style="width:64px;height:84px" />
+                <div>
+                  <h4 style="margin:0 0 4px; font-size:1rem">${c.name}</h4>
+                  <p class="meta muted" style="margin:0">Size: ${c.size}</p>
+                  <p class="meta muted" style="margin:0">${money(c.price)} each</p>
+                </div>
+              </div>
+              <div class="row">
+                <input type="number" min="1" max="10" value="${c.quantity}" class="qty-input" style="width:60px; padding:6px 8px; border:1px solid var(--line); border-radius:4px" />
+                <span class="now">${money(c.price * c.quantity)}</span>
+                <button class="btn btn-ghost btn-sm remove-btn">Remove</button>
+              </div>
+            </div>
+          `).join("")}
+        </div>
+        <div class="card">
+          <h3 style="font-size:1.1rem">Order Summary</h3>
+          <div class="row between"><span class="muted">Subtotal</span><span>${money(subtotal)}</span></div>
+          <div class="row between"><span class="muted">Shipping</span><span>${subtotal >= 1500 ? "Free" : money(79)}</span></div>
+          <hr style="border:none;border-top:1px solid var(--line); margin:12px 0" />
+          <div class="row between" style="font-weight:700"><span>Total</span><span>${money(subtotal + (subtotal >= 1500 ? 0 : 79))}</span></div>
+          <a href="checkout.html" class="btn btn-primary btn-block" style="margin-top:16px">Proceed to Checkout</a>
+        </div>
+      </div>
+    `;
+
+    qsa(".qty-input").forEach(inp => inp.addEventListener("change", (e) => {
+      const card = e.target.closest("[data-pid]");
+      updateCartQty(card.dataset.pid, card.dataset.size, Number(e.target.value));
+      render();
+    }));
+    qsa(".remove-btn").forEach(btn => btn.addEventListener("click", (e) => {
+      const card = e.target.closest("[data-pid]");
+      removeFromCart(card.dataset.pid, card.dataset.size);
+      render();
+    }));
+  }
+  render();
+</script>
+</body>
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Orders — Nandini Unique Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="toolbar">
+      <div><span class="eyebrow">Fulfilment</span><h2 style="margin:0">Orders</h2></div>
+      <select id="status-filter" class="btn btn-ghost" style="border:1px solid var(--line)">
+        <option value="">All Statuses</option>
+        <option>Placed</option><option>Confirmed</option><option>Packed</option><option>Shipped</option>
+        <option>Out for Delivery</option><option>Delivered</option><option>Cancelled</option><option>Returned</option>
+      </select>
+    </div>
+    <div class="table-wrap card" style="padding:0">
+      <table>
+        <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th></th></tr></thead>
+        <tbody id="order-rows"><tr><td colspan="6" class="muted" style="padding:20px">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="order-modal">
+  <div class="modal" style="max-width:700px">
+    <button class="close-x" id="close-modal">✕</button>
+    <div id="order-modal-body"></div>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+  if (!guardAdmin()) { }
+  renderAdminSidebar("orders");
+
+  let orders = [];
+  const STATUSES = ["Placed","Confirmed","Packed","Shipped","Out for Delivery","Delivered","Cancelled","Returned"];
+
+  function img(path) { return path ? `${API_ORIGIN}${path}` : "https://placehold.co/60x80/6e1e32/e8c874?text=NU"; }
+
+  async function loadOrders() {
+    const status = qs("#status-filter").value;
+    qs("#order-rows").innerHTML = `<tr><td colspan="6" class="muted" style="padding:20px">Loading…</td></tr>`;
+    try {
+      orders = (await api(`/orders/admin/all${status ? `?status=${status}` : ""}`)).orders;
+      qs("#order-rows").innerHTML = orders.length ? orders.map(o => `
+        <tr>
+          <td><b>#${o._id.slice(-6).toUpperCase()}</b><br/><span class="muted" style="font-size:.78rem">${new Date(o.createdAt).toLocaleDateString("en-IN")}</span></td>
+          <td>${o.user?.name || "—"}<br/><span class="muted" style="font-size:.78rem">${o.user?.phone || ""}</span></td>
+          <td>${money(o.totalAmount)}</td>
+          <td><span class="pill pay-${o.payment.status}">${o.payment.status}</span>${o.payment.transactionId ? `<br/><span class="muted" style="font-size:.75rem">Ref: ${o.payment.transactionId}</span>` : ""}</td>
+          <td><span class="${statusPillClass(o.orderStatus)}">${o.orderStatus}</span></td>
+          <td><button class="btn btn-outline btn-sm manage-btn" data-id="${o._id}">Manage</button></td>
+        </tr>
+      `).join("") : `<tr><td colspan="6" class="muted" style="padding:20px">No orders found.</td></tr>`;
+      qsa(".manage-btn").forEach(b => b.addEventListener("click", () => openOrder(b.dataset.id)));
+    } catch (e) {
+      qs("#order-rows").innerHTML = `<tr><td colspan="6" class="error-msg">${e.message}</td></tr>`;
+    }
+  }
+
+  function openOrder(id) {
+    const o = orders.find(x => x._id === id);
+    qs("#order-modal-body").innerHTML = `
+      <h3>Order #${o._id.slice(-6).toUpperCase()}</h3>
+      <p class="muted">${o.user?.name} · ${o.user?.email} · ${o.user?.phone}</p>
+      <p class="muted">${o.shippingAddress?.line1}, ${o.shippingAddress?.line2 || ""} ${o.shippingAddress?.city}, ${o.shippingAddress?.state} - ${o.shippingAddress?.pincode}</p>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th>Item</th><th>Size</th><th>Qty</th><th>Price</th></tr></thead>
+        <tbody>${o.items.map(it => `<tr><td><img src="${img(it.image)}" class="thumb-sm" /></td><td>${it.name}</td><td>${it.size}</td><td>${it.quantity}</td><td>${money(it.price)}</td></tr>`).join("")}</tbody>
+      </table></div>
+      <div class="row between" style="font-weight:700; margin:10px 0"><span>Total</span><span>${money(o.totalAmount)}</span></div>
+
+      <div class="card" style="background:var(--blush); margin-bottom:16px">
+        <h4 style="margin-top:0; font-size:.92rem">Payment Verification</h4>
+        <p class="muted" style="margin:0 0 8px">Method: ${o.payment.method} · Reference/UTR entered: <b>${o.payment.transactionId || "none yet"}</b></p>
+        <div class="row">
+          <select id="pay-status-select">
+            <option ${o.payment.status==="Pending"?"selected":""}>Pending</option>
+            <option ${o.payment.status==="Verified"?"selected":""}>Verified</option>
+            <option ${o.payment.status==="Failed"?"selected":""}>Failed</option>
+            <option ${o.payment.status==="Refunded"?"selected":""}>Refunded</option>
+          </select>
+          <button class="btn btn-outline btn-sm" id="save-payment">Update Payment Status</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <h4 style="margin-top:0; font-size:.92rem">Update Order Status</h4>
+        <div class="field"><label>New Status</label>
+          <select id="status-select">${STATUSES.map(s => `<option ${s===o.orderStatus?"selected":""}>${s}</option>`).join("")}</select>
+        </div>
+        <div class="field"><label>Tracking note (e.g. "At Mumbai hub, arriving tomorrow")</label><input id="tracking-note" value="${o.trackingNote||""}" /></div>
+        <div class="field"><label>Internal note (optional)</label><input id="status-note" placeholder="e.g. Packed by Raju" /></div>
+        <button class="btn btn-primary" id="save-status">Update & Notify Customer (Email + WhatsApp)</button>
+        <p id="status-msg" class="hint" style="margin-top:8px"></p>
+      </div>
+
+      <h4 style="font-size:.9rem">History</h4>
+      <ul class="stack" style="gap:4px">
+        ${o.statusHistory.map(h => `<li class="muted" style="font-size:.82rem">• ${h.status} — ${new Date(h.at).toLocaleString("en-IN")}</li>`).join("")}
+      </ul>
+    `;
+
+    qs("#save-payment").addEventListener("click", async () => {
+      await api(`/orders/${o._id}/payment`, { method: "PUT", body: { status: qs("#pay-status-select").value } });
+      loadOrders();
+      qs("#order-modal").classList.remove("open");
+    });
+
+    qs("#save-status").addEventListener("click", async () => {
+      qs("#status-msg").textContent = "Updating…";
+      try {
+        const res = await api(`/orders/${o._id}/status`, { method: "PUT", body: {
+          status: qs("#status-select").value,
+          note: qs("#status-note").value,
+          trackingNote: qs("#tracking-note").value,
+        }});
+        qs("#status-msg").textContent = res.whatsapp?.sent
+          ? "Customer notified automatically via WhatsApp + email."
+          : `Email sent. WhatsApp auto-send isn't configured — open this link to message manually: ${res.whatsapp?.link || ""}`;
+        loadOrders();
+      } catch (err) {
+        qs("#status-msg").textContent = err.message;
+      }
+    });
+
+    qs("#order-modal").classList.add("open");
+  }
+
+  qs("#close-modal").addEventListener("click", () => qs("#order-modal").classList.remove("open"));
+  qs("#status-filter").addEventListener("change", loadOrders);
+  loadOrders();
+</script>
+</body>
+</html>

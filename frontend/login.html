@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log In — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <form id="login-form" class="form-card">
+    <h2 class="center" style="margin-bottom:20px">Welcome Back</h2>
+    <div class="field"><label>Email</label><input required type="email" name="email" /></div>
+    <div class="field"><label>Password</label><input required type="password" name="password" /></div>
+    <p id="login-error" class="error-msg"></p>
+    <button class="btn btn-primary btn-block" type="submit">Log In</button>
+    <p class="hint center" style="margin-top:14px">New here? <a href="register.html" style="text-decoration:underline">Create an account</a></p>
+    <p class="hint center" style="margin-top:6px">Store owner? <a href="admin/login.html" style="text-decoration:underline">Admin Login</a></p>
+  </form>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("");
+  renderFooter();
+  renderWaFloat();
+
+  qs("#login-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    qs("#login-error").textContent = "";
+    const fd = new FormData(e.target);
+    try {
+      const { token, user } = await api("/auth/login", {
+        method: "POST", auth: false,
+        body: { email: fd.get("email"), password: fd.get("password") },
+      });
+      saveSession(token, user);
+      const next = new URLSearchParams(window.location.search).get("next") || (user.role === "admin" ? "admin/dashboard.html" : "index.html");
+      window.location.href = next;
+    } catch (err) {
+      qs("#login-error").textContent = err.message;
+    }
+  });
+</script>
+</body>
+</html>

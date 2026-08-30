@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dashboard — Nandini Unique Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="toolbar">
+      <div><span class="eyebrow">Overview</span><h2 style="margin:0">Dashboard</h2></div>
+    </div>
+    <div class="stat-grid" id="stats-grid">
+      <p class="muted">Loading stats…</p>
+    </div>
+    <div class="card">
+      <h3 style="font-size:1rem">Quick Actions</h3>
+      <div class="row" style="flex-wrap:wrap">
+        <a href="products.html" class="btn btn-primary btn-sm">+ Add New Saree</a>
+        <a href="offers.html" class="btn btn-outline btn-sm">+ Create Offer</a>
+        <a href="orders.html" class="btn btn-outline btn-sm">Manage Orders</a>
+        <a href="complaints.html" class="btn btn-outline btn-sm">View Queries</a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+  if (guardAdmin()) {
+    renderAdminSidebar("dashboard");
+    (async () => {
+      try {
+        const stats = await api("/admin/stats");
+        qs("#stats-grid").innerHTML = `
+          <div class="stat-card"><div class="num">${stats.totalOrders}</div><div class="lbl">Total Orders</div></div>
+          <div class="stat-card"><div class="num">${stats.pendingOrders}</div><div class="lbl">Orders In Progress</div></div>
+          <div class="stat-card"><div class="num">${stats.totalProducts}</div><div class="lbl">Live Listings</div></div>
+          <div class="stat-card"><div class="num">${stats.openComplaints}</div><div class="lbl">Open Queries</div></div>
+          <div class="stat-card"><div class="num">${money(stats.totalRevenue)}</div><div class="lbl">Verified Revenue</div></div>
+        `;
+      } catch (e) {
+        qs("#stats-grid").innerHTML = `<p class="error-msg">${e.message}</p>`;
+      }
+    })();
+  }
+</script>
+</body>
+</html>

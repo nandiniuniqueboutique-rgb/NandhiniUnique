@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Contact Us — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <div class="section-head"><div><span class="eyebrow">We're Here to Help</span><h2>Contact Us / Raise a Query</h2></div></div>
+
+  <div class="grid" style="grid-template-columns: 1.2fr 1fr; align-items:flex-start; gap:30px">
+    <form id="contact-form" class="form-card" style="margin:0; max-width:none">
+      <div class="field-row">
+        <div class="field"><label>Your Name</label><input required name="name" /></div>
+        <div class="field"><label>Email</label><input required type="email" name="email" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Phone (optional)</label><input name="phone" /></div>
+        <div class="field">
+          <label>Type</label>
+          <select name="type">
+            <option>Query</option><option>Complaint</option><option>Return/Exchange</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Order ID (if this is about an order)</label><input name="order" id="order-field" /></div>
+      <div class="field"><label>Subject</label><input required name="subject" /></div>
+      <div class="field"><label>Message</label><textarea required name="message" rows="5"></textarea></div>
+      <div class="field">
+        <label>Preferred way for us to reply</label>
+        <select name="contactPreference"><option>Email</option><option>WhatsApp</option></select>
+      </div>
+      <p id="contact-error" class="error-msg"></p>
+      <p id="contact-success" class="success-msg" style="display:none">Thanks! We've received your message and will get back to you shortly.</p>
+      <button class="btn btn-primary btn-block" type="submit">Submit</button>
+    </form>
+
+    <div class="stack">
+      <div class="card">
+        <h3 style="font-size:1.05rem">Reach Us Directly</h3>
+        <p class="muted">For quicker help, message us on WhatsApp — most questions get answered within minutes during store hours.</p>
+        <a id="wa-direct" href="#" target="_blank" class="btn btn-whatsapp btn-block">💬 Chat on WhatsApp</a>
+        <hr style="border:none;border-top:1px solid var(--line); margin:16px 0" />
+        <p class="muted" style="margin:0">✉️ hello@nandiniunique.com</p>
+        <p class="muted" style="margin:0">🕒 Mon–Sat, 10am – 7pm IST</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:1.05rem">Already reached out?</h3>
+        <p class="muted" style="margin:0">Log in and check <a href="my-orders.html" style="text-decoration:underline">My Orders</a> — any reply we've sent will show against that order.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("contact");
+  renderFooter();
+  renderWaFloat();
+
+  qs("#wa-direct").href = waLink(STORE_WHATSAPP_NUMBER, "Hi Nandini Unique, I need some help.");
+
+  const orderParam = new URLSearchParams(window.location.search).get("order");
+  if (orderParam) qs("#order-field").value = orderParam;
+
+  qs("#contact-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    qs("#contact-error").textContent = "";
+    const fd = new FormData(e.target);
+    const payload = Object.fromEntries(fd.entries());
+    if (!payload.order) delete payload.order;
+    try {
+      await api("/complaints", { method: "POST", body: payload, auth: isLoggedIn() });
+      qs("#contact-success").style.display = "block";
+      e.target.reset();
+    } catch (err) {
+      qs("#contact-error").textContent = err.message;
+    }
+  });
+</script>
+</body>
+</html>

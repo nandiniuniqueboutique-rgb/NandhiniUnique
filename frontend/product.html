@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Saree Details — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section" id="product-root">
+  <p class="muted">Loading saree details…</p>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("shop");
+  renderFooter();
+  renderWaFloat();
+
+  const id = new URLSearchParams(window.location.search).get("id");
+  let product = null;
+  let selectedSize = null;
+  let mainImgIndex = 0;
+
+  function currentPrice() {
+    if (!product) return 0;
+    const opt = product.sizeOptions.find(s => s.size === selectedSize);
+    const modifier = opt ? opt.priceModifier : 0;
+    return Math.round((product.basePrice + modifier) * (1 - (product.discountPercent||0)/100));
+  }
+
+  function render() {
+    const images = product.images.length ? product.images.map(i => `${API_ORIGIN}${i}`) : ["https://placehold.co/600x760/6e1e32/e8c874?text=Nandini+Unique"];
+    const attrs = Object.entries(product.attributes || {});
+
+    qs("#product-root").innerHTML = `
+      <div class="grid cols-2" style="grid-template-columns: 1fr 1fr; align-items:flex-start; gap:44px;">
+        <div>
+          <div class="thumb" style="border-radius:6px; overflow:hidden; border:1px solid var(--line); aspect-ratio:3/4;">
+            <img id="main-image" src="${images[mainImgIndex]}" style="width:100%;height:100%;object-fit:cover" />
+          </div>
+          <div class="row" style="margin-top:12px; flex-wrap:wrap;">
+            ${images.map((im, idx) => `<button class="thumb-swatch" data-idx="${idx}" style="border:2px solid ${idx===mainImgIndex?'var(--gold)':'var(--line)'}; padding:0; border-radius:4px; overflow:hidden; width:64px; height:80px; background:none;"><img src="${im}" style="width:100%;height:100%;object-fit:cover"/></button>`).join("")}
+          </div>
+        </div>
+        <div>
+          <span class="cat">${product.productType || ""}${product.category ? " · " + product.category : ""}${product.fabric ? " · " + product.fabric : ""}</span>
+          <h1 style="font-size:1.7rem; margin:8px 0 6px">${product.name}</h1>
+          ${product.color ? `<p class="muted">Colour: <b>${product.color}</b></p>` : ""}
+          <div class="price-row" style="margin:14px 0">
+            <span class="now" id="price-display" style="font-size:1.6rem">${money(currentPrice())}</span>
+            ${product.discountPercent ? `<span class="was">${money(product.basePrice)}</span><span class="pill" style="background:var(--gold);color:var(--maroon-dark)">${product.discountPercent}% OFF</span>` : ""}
+          </div>
+
+          <div class="field">
+            <label>Select Size / Option</label>
+            <select id="size-select">
+              ${product.sizeOptions.map(s => `<option value="${s.size}" ${s.stock<=0?'disabled':''}>${s.size} ${s.priceModifier ? `(+${money(s.priceModifier)})` : ''} ${s.stock<=0?'— Out of stock':''}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Quantity</label>
+            <input type="number" id="qty-input" value="1" min="1" max="10" style="width:90px" />
+          </div>
+
+          <div class="row" style="margin:18px 0 24px">
+            <button class="btn btn-primary" id="add-cart-btn">Add to Cart</button>
+            <button class="btn btn-gold" id="buy-now-btn">Buy Now</button>
+          </div>
+
+          <p id="add-msg" class="success-msg" style="display:none">Added to your cart!</p>
+
+          <div class="card" style="margin-bottom:18px">
+            <h4 style="margin-bottom:10px">Details</h4>
+            <p class="muted" style="margin:0 0 10px">${product.description || "No description provided."}</p>
+            ${attrs.length ? `<ul class="stack" style="gap:4px">${attrs.map(([k,v]) => `<li><b style="text-transform:capitalize">${k.replace(/([A-Z])/g,' $1')}:</b> ${typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}</li>`).join("")}</ul>` : ""}
+          </div>
+
+          <a id="ask-wa" href="#" target="_blank" class="btn btn-whatsapp btn-block">💬 Ask us about this saree on WhatsApp</a>
+        </div>
+      </div>
+    `;
+
+    selectedSize = product.sizeOptions.find(s => s.stock > 0)?.size || product.sizeOptions[0]?.size;
+    qs("#size-select").value = selectedSize;
+    qs("#price-display").textContent = money(currentPrice());
+
+    qsa(".thumb-swatch").forEach(btn => btn.addEventListener("click", () => {
+      mainImgIndex = Number(btn.dataset.idx);
+      qs("#main-image").src = images[mainImgIndex];
+      qsa(".thumb-swatch").forEach(b => b.style.border = "2px solid var(--line)");
+      btn.style.border = "2px solid var(--gold)";
+    }));
+
+    qs("#size-select").addEventListener("change", (e) => {
+      selectedSize = e.target.value;
+      qs("#price-display").textContent = money(currentPrice());
+    });
+
+    qs("#add-cart-btn").addEventListener("click", () => addCurrentToCart(false));
+    qs("#buy-now-btn").addEventListener("click", () => addCurrentToCart(true));
+
+    qs("#ask-wa").href = waLink(STORE_WHATSAPP_NUMBER, `Hi, I'm interested in "${product.name}" (₹${currentPrice()}). Could you share more details?`);
+  }
+
+  function addCurrentToCart(goToCheckout) {
+    const qty = Math.max(1, Number(qs("#qty-input").value || 1));
+    addToCart({
+      productId: product._id,
+      name: product.name,
+      image: product.images[0] || "",
+      size: selectedSize,
+      price: currentPrice(),
+      quantity: qty,
+    });
+    if (goToCheckout) {
+      window.location.href = "checkout.html";
+    } else {
+      qs("#add-msg").style.display = "block";
+      setTimeout(() => qs("#add-msg").style.display = "none", 2000);
+    }
+  }
+
+  async function load() {
+    if (!id) { qs("#product-root").innerHTML = `<p class="error-msg">No saree specified.</p>`; return; }
+    try {
+      const res = await api(`/products/${id}`, { auth: false });
+      product = res.product;
+      render();
+    } catch (e) {
+      qs("#product-root").innerHTML = `<p class="error-msg">Could not load this saree. It may have been removed.</p>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

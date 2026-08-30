@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Offers — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <div class="section-head"><div><span class="eyebrow">Save More</span><h2>Current Offers</h2></div></div>
+  <div class="grid cols-3" id="offers-grid"><p class="muted">Loading offers…</p></div>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("offers");
+  renderFooter();
+  renderWaFloat();
+
+  async function load() {
+    try {
+      const { offers } = await api("/offers", { auth: false });
+      qs("#offers-grid").innerHTML = offers.length ? offers.map(o => `
+        <div class="offer-card">
+          ${o.image ? `<img src="${API_ORIGIN}${o.image}" style="border-radius:4px; aspect-ratio:16/9; object-fit:cover" />` : ""}
+          <h3 style="margin:0">${o.title}</h3>
+          <p class="muted" style="margin:0">${o.description || ""}</p>
+          <p style="font-weight:700; color:var(--maroon-dark); margin:0">${o.discountPercent}% OFF</p>
+          ${o.code ? `<span class="code">${o.code}</span>` : ""}
+          <a href="shop.html" class="btn btn-outline btn-sm" style="align-self:flex-start; margin-top:6px">Shop Now</a>
+        </div>
+      `).join("") : `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🎁</div><p>No active offers right now — check back soon!</p></div>`;
+    } catch (e) {
+      qs("#offers-grid").innerHTML = `<p class="error-msg">Could not load offers.</p>`;
+    }
+  }
+  load();
+</script>
+</body>
+</html>

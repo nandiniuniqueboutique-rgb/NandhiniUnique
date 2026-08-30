@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Offers — Nandini Unique Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="admin-sidebar"></aside>
+  <main class="admin-main">
+    <div class="toolbar">
+      <div><span class="eyebrow">Promotions</span><h2 style="margin:0">Offers & Coupons</h2></div>
+      <button class="btn btn-primary" id="add-btn">+ Create Offer</button>
+    </div>
+    <div class="grid cols-3" id="offer-cards"><p class="muted">Loading…</p></div>
+  </main>
+</div>
+
+<div class="modal-backdrop" id="offer-modal">
+  <div class="modal">
+    <button class="close-x" id="close-modal">✕</button>
+    <h3 id="modal-title">Create Offer</h3>
+    <form id="offer-form" enctype="multipart/form-data">
+      <input type="hidden" name="id" />
+      <div class="field"><label>Title</label><input required name="title" placeholder="e.g. Festive Season Sale" /></div>
+      <div class="field"><label>Description</label><textarea name="description" rows="2"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Discount %</label><input required type="number" name="discountPercent" min="1" max="90" /></div>
+        <div class="field"><label>Coupon Code (optional)</label><input name="code" placeholder="e.g. FESTIVE10" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Valid From</label><input type="date" name="validFrom" /></div>
+        <div class="field"><label>Valid Till</label><input type="date" name="validTill" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Applies To</label>
+          <select name="appliesTo" id="applies-select">
+            <option value="all">Everything</option>
+            <option value="category">Specific Type/Category</option>
+          </select>
+        </div>
+        <div class="field" id="category-field" style="display:none">
+          <label>Category</label>
+          <input name="category" list="offer-category-suggestions" placeholder="e.g. Kanjivaram, Dress" />
+          <datalist id="offer-category-suggestions"></datalist>
+        </div>
+      </div>
+      <div class="field"><label>Banner Image (optional)</label><input type="file" name="image" accept="image/*" /></div>
+      <label class="row" style="gap:6px; margin-bottom:14px"><input type="checkbox" name="isActive" checked /> Active</label>
+      <p id="form-error" class="error-msg"></p>
+      <button class="btn btn-primary btn-block" type="submit">Save Offer</button>
+    </form>
+  </div>
+</div>
+
+<script src="../js/config.js"></script>
+<script src="../js/api.js"></script>
+<script src="../js/admin.js"></script>
+<script>
+  if (!guardAdmin()) { }
+  renderAdminSidebar("offers");
+
+  let offers = [];
+  qs("#applies-select").addEventListener("change", (e) => {
+    qs("#category-field").style.display = e.target.value === "category" ? "block" : "none";
+  });
+
+  (async () => {
+    try {
+      const { categories } = await api("/products/meta/categories", { auth: false });
+      qs("#offer-category-suggestions").innerHTML = categories.map(c => `<option value="${c}"></option>`).join("");
+    } catch (e) { /* optional */ }
+  })();
+
+  function openModal(offer = null) {
+    qs("#offer-form").reset();
+    qs("#form-error").textContent = "";
+    if (offer) {
+      qs("#modal-title").textContent = "Edit Offer";
+      const f = qs("#offer-form");
+      f.id.value = offer._id;
+      f.title.value = offer.title;
+      f.description.value = offer.description || "";
+      f.discountPercent.value = offer.discountPercent;
+      f.code.value = offer.code || "";
+      f.appliesTo.value = offer.appliesTo;
+      if (offer.appliesTo === "category") { qs("#category-field").style.display = "block"; f.category.value = offer.category; }
+      f.isActive.checked = offer.isActive;
+      if (offer.validFrom) f.validFrom.value = offer.validFrom.slice(0,10);
+      if (offer.validTill) f.validTill.value = offer.validTill.slice(0,10);
+    } else {
+      qs("#modal-title").textContent = "Create Offer";
+      qs("#offer-form").id.value = "";
+    }
+    qs("#offer-modal").classList.add("open");
+  }
+
+  qs("#add-btn").addEventListener("click", () => openModal());
+  qs("#close-modal").addEventListener("click", () => qs("#offer-modal").classList.remove("open"));
+
+  qs("#offer-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    qs("#form-error").textContent = "";
+    const form = e.target;
+    const fd = new FormData(form);
+    fd.set("isActive", form.isActive.checked);
+    const id = form.id.value;
+    try {
+      if (id) await api(`/offers/${id}`, { method: "PUT", body: fd, isForm: true });
+      else await api("/offers", { method: "POST", body: fd, isForm: true });
+      qs("#offer-modal").classList.remove("open");
+      loadOffers();
+    } catch (err) {
+      qs("#form-error").textContent = err.message;
+    }
+  });
+
+  async function loadOffers() {
+    try {
+      offers = (await api("/offers/admin/all")).offers;
+      qs("#offer-cards").innerHTML = offers.length ? offers.map(o => `
+        <div class="offer-card">
+          <h3 style="margin:0">${o.title}</h3>
+          <p class="muted" style="margin:0">${o.description||""}</p>
+          <p style="font-weight:700; color:var(--maroon-dark); margin:0">${o.discountPercent}% OFF ${o.isActive ? '' : '<span class="pill status-Cancelled">Inactive</span>'}</p>
+          ${o.code ? `<span class="code">${o.code}</span>` : ""}
+          <div class="row" style="margin-top:8px">
+            <button class="btn btn-outline btn-sm edit-btn" data-id="${o._id}">Edit</button>
+            <button class="btn btn-ghost btn-sm del-btn" data-id="${o._id}">Delete</button>
+          </div>
+        </div>
+      `).join("") : `<p class="muted">No offers yet. Create one to promote your collection!</p>`;
+
+      qsa(".edit-btn").forEach(b => b.addEventListener("click", () => openModal(offers.find(o => o._id === b.dataset.id))));
+      qsa(".del-btn").forEach(b => b.addEventListener("click", async () => {
+        if (!confirm("Delete this offer?")) return;
+        await api(`/offers/${b.dataset.id}`, { method: "DELETE" });
+        loadOffers();
+      }));
+    } catch (e) {
+      qs("#offer-cards").innerHTML = `<p class="error-msg">${e.message}</p>`;
+    }
+  }
+  loadOffers();
+</script>
+</body>
+</html>

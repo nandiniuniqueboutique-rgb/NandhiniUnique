@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shop — Nandini Unique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header id="site-header" class="site-header"></header>
+
+<main class="container section">
+  <div class="section-head">
+    <div>
+      <span class="eyebrow">Our Collection</span>
+      <h2 id="page-title">All Sarees & Dresses</h2>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:24px; flex-wrap:wrap; gap:10px;">
+    <select id="f-type" class="btn btn-ghost" style="border:1px solid var(--line)">
+      <option value="">All Types</option>
+      <option value="Saree">Sarees</option>
+      <option value="Dress">Dresses</option>
+      <option value="Other">Other</option>
+    </select>
+    <input id="f-category" list="category-suggestions" placeholder="Type / fabric (e.g. Kanjivaram, Anarkali)" class="btn btn-ghost" style="border:1px solid var(--line); width:220px" />
+    <datalist id="category-suggestions"></datalist>
+    <select id="f-sort" class="btn btn-ghost" style="border:1px solid var(--line)">
+      <option value="">Sort: Newest</option>
+      <option value="price_asc">Price: Low to High</option>
+      <option value="price_desc">Price: High to Low</option>
+    </select>
+    <input id="f-min" type="number" placeholder="Min ₹" class="btn btn-ghost" style="border:1px solid var(--line); width:110px" />
+    <input id="f-max" type="number" placeholder="Max ₹" class="btn btn-ghost" style="border:1px solid var(--line); width:110px" />
+    <button class="btn btn-primary btn-sm" id="apply-filters">Apply</button>
+  </div>
+
+  <div class="grid cols-4" id="product-grid">
+    <p class="muted">Loading products…</p>
+  </div>
+</main>
+
+<footer id="site-footer" class="site-footer"></footer>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script>
+  renderHeader("shop");
+  renderFooter();
+  renderWaFloat();
+
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("category")) qs("#f-category").value = params.get("category");
+  if (params.get("type")) qs("#f-type").value = params.get("type");
+  if (params.get("q")) qs("#page-title").textContent = `Search results for "${params.get("q")}"`;
+  else if (params.get("type") === "Saree") qs("#page-title").textContent = "Sarees";
+  else if (params.get("type") === "Dress") qs("#page-title").textContent = "Dresses";
+
+  let currentProducts = [];
+
+  function productCard(p) {
+    const price = Math.round(p.basePrice * (1 - (p.discountPercent||0)/100));
+    const img = p.images && p.images[0] ? `${API_ORIGIN}${p.images[0]}` : "https://placehold.co/400x520/6e1e32/e8c874?text=Nandini+Unique";
+    return `
+      <div class="product-card">
+        <a href="product.html?id=${p._id}" class="card-link">
+          <div class="thumb">
+            ${p.discountPercent ? `<span class="discount-flag">${p.discountPercent}% OFF</span>` : ""}
+            <img src="${img}" alt="${p.name}" loading="lazy" />
+          </div>
+          <div class="body">
+            <span class="cat">${p.productType || ""}${p.category ? " · " + p.category : ""}</span>
+            <h3>${p.name}</h3>
+            <div class="price-row">
+              <span class="now">${money(price)}</span>
+              ${p.discountPercent ? `<span class="was">${money(p.basePrice)}</span>` : ""}
+            </div>
+          </div>
+        </a>
+        <div class="card-actions">
+          <button class="btn btn-gold btn-sm btn-block quick-order-btn" data-id="${p._id}">🛒 Quick Order</button>
+        </div>
+      </div>`;
+  }
+
+  function wireQuickOrderButtons() {
+    qsa(".quick-order-btn").forEach(btn => btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const product = currentProducts.find(p => p._id === btn.dataset.id);
+      if (product) openQuickOrder(product);
+    }));
+  }
+
+  async function loadCategorySuggestions() {
+    try {
+      const { categories } = await api("/products/meta/categories", { auth: false });
+      qs("#category-suggestions").innerHTML = categories.map(c => `<option value="${c}"></option>`).join("");
+    } catch (e) { /* optional */ }
+  }
+
+  async function loadProducts() {
+    const q = new URLSearchParams();
+    if (params.get("q")) q.set("q", params.get("q"));
+    if (qs("#f-category").value) q.set("category", qs("#f-category").value);
+    if (qs("#f-type").value) q.set("type", qs("#f-type").value);
+    if (qs("#f-sort").value) q.set("sort", qs("#f-sort").value);
+    if (qs("#f-min").value) q.set("minPrice", qs("#f-min").value);
+    if (qs("#f-max").value) q.set("maxPrice", qs("#f-max").value);
+
+    qs("#product-grid").innerHTML = `<p class="muted">Loading products…</p>`;
+    try {
+      const { products } = await api(`/products?${q.toString()}`, { auth: false });
+      currentProducts = products;
+      qs("#product-grid").innerHTML = products.length
+        ? products.map(productCard).join("")
+        : `<div class="empty-state" style="grid-column:1/-1"><div class="icon">🔍</div><p>No products matched your filters. Try widening your search.</p></div>`;
+      wireQuickOrderButtons();
+    } catch (e) {
+      qs("#product-grid").innerHTML = `<p class="error-msg">Could not load products. Is the backend server running on port 5000?</p>`;
+    }
+  }
+
+  qs("#apply-filters").addEventListener("click", loadProducts);
+  loadCategorySuggestions();
+  loadProducts();
+</script>
+</body>
+</html>
