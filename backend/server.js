@@ -36,6 +36,5 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
-  app.listen(PORT, () => console.log(`Nandini Unique API running on http://localhost:${PORT}`));
-});
+app.listen(PORT, () => console.log(`Nandini Unique API running on http://localhost:${PORT}`));
+connectDB();
