@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: nandini-unique-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: echo "Static frontend ready"
+    staticPublishPath: .
+    domains:
+      - nandhiniunique.com
+      - www.nandhiniunique.com
+
+  - type: web
+    name: nandini-unique-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://nandhiniunique.com
+      - key: STORE_WHATSAPP_NUMBER
+        sync: false
+      - key: STORE_EMAIL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
