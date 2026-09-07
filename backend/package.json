@@ -14,9 +14,11 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.6.0",
     "mongoose": "^8.5.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.14"
+    "nodemailer": "^9.0.6",
+    "npm": "^11.19.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

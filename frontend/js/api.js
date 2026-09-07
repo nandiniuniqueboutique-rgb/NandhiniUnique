@@ -101,9 +101,8 @@ function renderHeader(activePage = "") {
   el.innerHTML = `
     <div class="zari-border"></div>
     <div class="bar container">
-      <a href="index.html" class="brand">
-        <span class="name">Nandini Unique</span>
-        <span class="tag">Handpicked Sarees, Woven With Care</span>
+      <a href="index.html" class="brand brand-lockup" aria-label="Nandini Unique home page">
+        <img class="brand-logo" src="assets/nandini-logo.svg" alt="Nandini Unique logo" />
       </a>
       <nav class="main-nav">
         <a href="index.html" class="${activePage === "home" ? "active" : ""}">Home</a>

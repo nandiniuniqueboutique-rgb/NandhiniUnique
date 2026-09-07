@@ -7,4 +7,6 @@
 // this is the ONLY line you need to change across the whole project.
 // ===========================================================
 
-const API_ORIGIN = "http://localhost:5000"; // <-- change this after deploying the backend, e.g. "https://nandini-backend.onrender.com"
+const API_ORIGIN = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+	? "http://localhost:5000"
+	: "https://nandini-unique-api.onrender.com";
