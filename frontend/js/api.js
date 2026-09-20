@@ -167,7 +167,7 @@ function renderFooter() {
         <h4>Reach Us</h4>
         <ul class="stack" style="gap:8px">
           <li>📞 +${STORE_WHATSAPP_NUMBER}</li>
-          <li>✉️ hello@nandiniunique.com</li>
+          <li>✉️ nandiniuniqueboutique@gmail.com</li>
           <li>Mon–Sat, 10am–7pm IST</li>
         </ul>
       </div>
