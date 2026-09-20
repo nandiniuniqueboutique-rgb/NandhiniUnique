@@ -5,7 +5,7 @@
 
 // API_ORIGIN comes from js/config.js, loaded before this file on every page.
 const API_BASE = API_ORIGIN + "/api";
-const STORE_WHATSAPP_NUMBER = "919999999999"; // shown to customers as a fallback contact number
+const STORE_WHATSAPP_NUMBER = "917411211052"; // shown to customers as a fallback contact number
 
 // ---------- session helpers ----------
 function getToken() { return localStorage.getItem("nu_token"); }
