@@ -39,7 +39,7 @@ router.get("/validate/:code", async (req, res) => {
 router.post("/", protect, adminOnly, upload.single("image"), async (req, res) => {
   try {
     const body = { ...req.body };
-    if (req.file) body.image = `/uploads/${req.file.filename}`;
+    if (req.file) body.image = req.file.path; // permanent Cloudinary URL
     const offer = await Offer.create(body);
     res.status(201).json({ offer });
   } catch (err) {
@@ -52,7 +52,7 @@ router.put("/:id", protect, adminOnly, upload.single("image"), async (req, res) 
   const offer = await Offer.findById(req.params.id);
   if (!offer) return res.status(404).json({ message: "Offer not found" });
   const body = { ...req.body };
-  if (req.file) body.image = `/uploads/${req.file.filename}`;
+  if (req.file) body.image = req.file.path; // permanent Cloudinary URL
   Object.assign(offer, body);
   await offer.save();
   res.json({ offer });

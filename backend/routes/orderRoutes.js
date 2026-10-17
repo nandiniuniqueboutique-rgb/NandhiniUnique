@@ -1,6 +1,7 @@
 const express = require("express");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const Offer = require("../models/Offer");
 const { protect, adminOnly } = require("../middleware/auth");
 const { sendMail } = require("../utils/email");
 const { sendWhatsAppMessage, buildWaLink } = require("../utils/whatsapp");
@@ -13,7 +14,7 @@ const router = express.Router();
 // Delivery keep the manual flow: the owner verifies the UTR from the admin panel.
 router.post("/", protect, async (req, res) => {
   try {
-    const { items, shippingAddress, payment, couponCode, discountAmount } = req.body;
+    const { items, shippingAddress, payment, couponCode } = req.body;
     if (!items || !items.length) return res.status(400).json({ message: "Your cart is empty" });
 
     // Recalculate prices server-side from the database so a tampered request can't change totals
@@ -40,13 +41,25 @@ router.post("/", protect, async (req, res) => {
       });
     }
 
-    // Shipping is worked out here (same rule as the checkout page: free from Rs 1500, else Rs 79)
-    // and the discount is only accepted with a coupon code and capped, because online payments
-    // are marked paid automatically and must not rely on amounts sent by the browser.
+    // Shipping and discount are worked out here, not taken from the browser, because online
+    // payments are marked paid automatically. Same rules as the checkout page:
+    // shipping is free from Rs 1500 (else Rs 79) and a coupon takes discountPercent off the items total.
     const finalShippingFee = itemsTotal >= 1500 ? 0 : 79;
-    const finalDiscount = couponCode
-      ? Math.min(Math.max(0, Math.round(Number(discountAmount) || 0)), Math.floor(itemsTotal * 0.5))
-      : 0;
+    let finalDiscount = 0;
+    let appliedCode = "";
+    if (couponCode) {
+      const now = new Date();
+      const offer = await Offer.findOne({
+        code: String(couponCode).toUpperCase().trim(),
+        isActive: true,
+        validFrom: { $lte: now },
+        $or: [{ validTill: null }, { validTill: { $gte: now } }],
+      });
+      if (!offer) return res.status(400).json({ message: "This offer code is invalid or has expired" });
+      const pct = Math.min(100, Math.max(0, Number(offer.discountPercent) || 0));
+      finalDiscount = Math.round((itemsTotal * pct) / 100);
+      appliedCode = offer.code;
+    }
     const total = Math.max(0, itemsTotal + finalShippingFee - finalDiscount);
     const isOnline = payment?.method === "Card/Online";
 
@@ -58,7 +71,7 @@ router.post("/", protect, async (req, res) => {
       shippingFee: finalShippingFee,
       discountAmount: finalDiscount,
       totalAmount: total,
-      couponCode: couponCode || "",
+      couponCode: appliedCode,
       payment: {
         method: payment?.method || "UPI",
         transactionId: isOnline ? "" : payment?.transactionId || "",
