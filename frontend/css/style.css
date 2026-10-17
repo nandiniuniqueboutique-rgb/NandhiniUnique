@@ -132,16 +132,17 @@ nav.main-nav a:hover, nav.main-nav a.active { opacity: 1; border-color: var(--go
 .hero p.lede { color: var(--blush); max-width: 46ch; font-size: 1.02rem; }
 .hero .cta-row { display: flex; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
 .hero-motif {
-  aspect-ratio: 1/1; border-radius: 50%; border: 10px solid var(--gold);
+  width: 100%; max-width: 340px; justify-self: center;
+  aspect-ratio: 1/1; border-radius: 50%; border: 8px solid var(--gold);
   display: flex; align-items: center; justify-content: center; position: relative;
   background: radial-gradient(circle at 35% 30%, #8a2f47, var(--maroon-dark));
   box-shadow: 0 30px 60px rgba(0,0,0,.35);
 }
 .hero-motif::before {
-  content: ""; position: absolute; inset: 16px; border: 1px dashed rgba(232,200,116,.6); border-radius: 50%;
+  content: ""; position: absolute; inset: 12px; border: 1px dashed rgba(232,200,116,.6); border-radius: 50%;
 }
 .hero-motif span { font-family: var(--font-display); color: var(--gold-light); font-size: 1.4rem; text-align: center; padding: 20px; }
-.hero-motif .hero-logo { position: relative; z-index: 1; width: 66%; height: 66%; object-fit: contain; display: block; }
+.hero-motif .hero-logo { position: relative; z-index: 1; width: 70%; height: 70%; object-fit: contain; display: block; }
 
 /* ---------- section ---------- */
 .section { padding: 60px 0; }
@@ -263,7 +264,7 @@ table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; 
 /* ---------- responsive ---------- */
 @media (max-width: 980px) {
   .hero .container { grid-template-columns: 1fr; }
-  .hero-motif { max-width: 260px; margin: 0 auto; }
+  .hero-motif { max-width: 220px; margin: 0 auto; }
   .checkout-grid { grid-template-columns: 1fr; }
   .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
   .grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
@@ -292,6 +293,8 @@ table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; 
   nav.main-nav a.active { border-bottom-color: var(--gold); }
   .hero .container { padding: 44px 18px 40px; }
   .hero h1 { max-width: none; }
+  .hero-motif { max-width: 150px; border-width: 5px; box-shadow: 0 14px 30px rgba(0,0,0,.3); }
+  .hero-motif::before { inset: 8px; }
   .section { padding: 40px 0; }
   .container { padding-left: 16px; padding-right: 16px; }
   .btn { min-height: 44px; }
