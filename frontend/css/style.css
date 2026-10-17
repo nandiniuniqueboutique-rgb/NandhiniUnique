@@ -90,6 +90,8 @@ nav.main-nav a { font-size: .92rem; color: var(--ivory); opacity: .85; padding: 
 nav.main-nav a:hover, nav.main-nav a.active { opacity: 1; border-color: var(--gold); }
 .header-actions { display: flex; align-items: center; gap: 14px; }
 .icon-link { position: relative; font-size: 1.1rem; }
+.nav-toggle { display: none; background: none; border: 1px solid rgba(255,255,255,.35); color: var(--ivory); border-radius: 6px; font-size: 1.3rem; line-height: 1; padding: 8px 12px; cursor: pointer; }
+.checkout-grid { grid-template-columns: 1.3fr 1fr; align-items: flex-start; gap: 30px; }
 .badge {
   position: absolute; top: -8px; right: -12px; background: var(--gold); color: var(--maroon-dark);
   font-size: .65rem; font-weight: 700; padding: 1px 5px; border-radius: 10px;
@@ -262,6 +264,7 @@ table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; 
 @media (max-width: 980px) {
   .hero .container { grid-template-columns: 1fr; }
   .hero-motif { max-width: 260px; margin: 0 auto; }
+  .checkout-grid { grid-template-columns: 1fr; }
   .grid.cols-4 { grid-template-columns: repeat(2, 1fr); }
   .grid.cols-3 { grid-template-columns: repeat(2, 1fr); }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -274,7 +277,26 @@ table th { font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; 
 @media (max-width: 620px) {
   .grid.cols-4, .grid.cols-3, .grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
   .field-row { grid-template-columns: 1fr; }
-  nav.main-nav { display: none; }
+  /* mobile header: logo | search + icons | menu button, nav drops down full-width */
+  .site-header .bar { padding: 8px 14px; gap: 10px; flex-wrap: wrap; }
+  .brand-lockup { min-height: 56px; }
+  .brand-logo { width: 56px; max-width: 56px; max-height: 56px; }
+  .header-actions { order: 2; flex: 1; justify-content: flex-end; gap: 8px; min-width: 0; }
+  .search-box { flex: 1; min-width: 0; padding: 6px 12px; }
+  .search-box input { width: 100%; min-width: 0; font-size: 16px; } /* 16px stops iPhone zoom-on-focus */
+  .icon-link { padding: 8px; font-size: 1.2rem; }
+  .nav-toggle { display: block; order: 3; }
+  nav.main-nav { display: none; order: 10; width: 100%; flex-direction: column; align-items: stretch; gap: 0; padding-bottom: 8px; }
+  nav.main-nav.open { display: flex; }
+  nav.main-nav a { padding: 13px 4px; font-size: 1rem; opacity: 1; border-bottom: 1px solid rgba(255,255,255,.12); }
+  nav.main-nav a.active { border-bottom-color: var(--gold); }
+  .hero .container { padding: 44px 18px 40px; }
+  .hero h1 { max-width: none; }
+  .section { padding: 40px 0; }
+  .container { padding-left: 16px; padding-right: 16px; }
+  .btn { min-height: 44px; }
+  .modal { padding: 20px; }
+  .checkout-grid { grid-template-columns: 1fr; gap: 20px; }
   .stat-grid { grid-template-columns: 1fr 1fr; }
   footer.site-footer .container { grid-template-columns: 1fr; }
 }
