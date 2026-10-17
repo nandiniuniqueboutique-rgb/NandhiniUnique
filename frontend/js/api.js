@@ -104,7 +104,8 @@ function renderHeader(activePage = "") {
       <a href="index.html" class="brand brand-lockup" aria-label="Nandini Unique home page">
         <img class="brand-logo" src="assets/nandini-logo.svg" alt="Nandini Unique logo" />
       </a>
-      <nav class="main-nav">
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Open menu" aria-expanded="false" aria-controls="main-nav">☰</button>
+      <nav class="main-nav" id="main-nav">
         <a href="index.html" class="${activePage === "home" ? "active" : ""}">Home</a>
         <a href="shop.html" class="${activePage === "shop" ? "active" : ""}">Shop</a>
         <a href="offers.html" class="${activePage === "offers" ? "active" : ""}">Offers</a>
@@ -131,6 +132,15 @@ function renderHeader(activePage = "") {
       if (e.key === "Enter" && search.value.trim()) {
         window.location.href = `shop.html?q=${encodeURIComponent(search.value.trim())}`;
       }
+    });
+  }
+  const navToggle = qs("#nav-toggle");
+  const mainNav = qs("#main-nav");
+  if (navToggle && mainNav) {
+    navToggle.addEventListener("click", () => {
+      const open = mainNav.classList.toggle("open");
+      navToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      navToggle.textContent = open ? "✕" : "☰";
     });
   }
   const logout = qs("#logout-link");
