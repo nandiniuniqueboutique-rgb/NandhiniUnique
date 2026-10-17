@@ -49,6 +49,57 @@
     `;
     const totalEl = qs("#upi-amount");
     if (totalEl) totalEl.textContent = money(total());
+    const onlineEl = qs("#online-amount");
+    if (onlineEl) onlineEl.textContent = money(total());
+  }
+
+  let pendingOrderId = null; // online order created but not yet paid (allows "retry payment")
+
+  function loadRazorpay() {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) return resolve();
+      const sc = document.createElement("script");
+      sc.src = "https://checkout.razorpay.com/v1/checkout.js";
+      sc.onload = () => resolve();
+      sc.onerror = () => reject(new Error("Could not load the payment window. Check your internet connection and try again."));
+      document.head.appendChild(sc);
+    });
+  }
+
+  // Opens Razorpay, then asks our server to verify the payment. Resolves only when paid + verified.
+  async function payOnline(orderId, address) {
+    const rz = await api("/payments/razorpay/create", { method: "POST", body: { orderId } });
+    await loadRazorpay();
+    const user = getUser();
+    const maroon = getComputedStyle(document.documentElement).getPropertyValue("--maroon").trim() || "#7b1e3a";
+    return new Promise((resolve, reject) => {
+      const rzp = new window.Razorpay({
+        key: rz.keyId,
+        amount: rz.amount,
+        currency: rz.currency,
+        name: "Nandini Unique",
+        description: "Order #" + rz.shortId,
+        order_id: rz.razorpayOrderId,
+        prefill: { name: address.name, contact: address.phone, email: user?.email || "" },
+        theme: { color: maroon },
+        handler: async (resp) => {
+          try {
+            await api("/payments/razorpay/verify", {
+              method: "POST",
+              body: {
+                orderId,
+                razorpay_order_id: resp.razorpay_order_id,
+                razorpay_payment_id: resp.razorpay_payment_id,
+                razorpay_signature: resp.razorpay_signature,
+              },
+            });
+            resolve();
+          } catch (e) { reject(e); }
+        },
+        modal: { ondismiss: () => reject(new Error("PAYMENT_CANCELLED")) },
+      });
+      rzp.open();
+    });
   }
 
   function build() {
@@ -90,12 +141,16 @@
             <div class="field">
               <label>Payment Method</label>
               <select name="method" id="pay-method">
+                <option value="Card/Online">Pay Online — UPI, Cards, Netbanking, Wallets</option>
                 <option value="UPI">UPI (QR Code)</option>
                 <option value="Bank Transfer">Bank Transfer</option>
                 <option value="Cash on Delivery">Cash on Delivery</option>
               </select>
             </div>
-            <div id="upi-block" class="card" style="background:var(--blush)">
+            <div id="online-block" class="card" style="background:var(--blush)">
+              <p style="margin:0">You will pay <b id="online-amount">₹0</b> securely through Razorpay (UPI, debit/credit cards, netbanking or wallets). Your order is confirmed as soon as the payment goes through.</p>
+            </div>
+            <div id="upi-block" class="card" style="background:var(--blush); display:none">
               <p style="margin:0 0 8px">Scan this QR / pay to UPI ID <b>nandiniunique@upi</b> for <b id="upi-amount">₹0</b>, then enter the reference number below.</p>
               <div style="width:150px;height:150px;background:#fff;border:1px dashed var(--maroon); display:flex; align-items:center; justify-content:center; margin-bottom:10px; font-size:.75rem; text-align:center; padding:8px;">
                 [ UPI QR code placeholder — replace with your real UPI QR image ]
@@ -109,7 +164,7 @@
           </div>
 
           <p id="order-error" class="error-msg"></p>
-          <button class="btn btn-primary btn-block" type="submit">Place Order</button>
+          <button class="btn btn-primary btn-block" type="submit" id="place-btn">Pay Now</button>
         </form>
 
         <div class="card" id="summary-box"></div>
@@ -119,8 +174,15 @@
     renderSummary();
 
     qs("#pay-method").addEventListener("change", (e) => {
+      qs("#online-block").style.display = e.target.value === "Card/Online" ? "block" : "none";
       qs("#upi-block").style.display = e.target.value === "UPI" ? "block" : "none";
       qs("#bank-block").style.display = e.target.value === "Bank Transfer" ? "block" : "none";
+      qs("#place-btn").textContent = e.target.value === "Card/Online" ? "Pay Now" : "Place Order";
+    });
+
+    // If the customer changes anything after an online order was created, start a fresh order
+    qs("#checkout-form").addEventListener("change", (ev) => {
+      if (ev.target.id !== "pay-method") pendingOrderId = null;
     });
 
     qs("#apply-coupon").addEventListener("click", async () => {
@@ -158,6 +220,28 @@
         discountAmount: discountAmount(),
         shippingFee: shippingFee(),
       };
+
+      if (method === "Card/Online") {
+        const btn = qs("#place-btn");
+        btn.disabled = true;
+        btn.textContent = "Please wait…";
+        try {
+          if (!pendingOrderId) {
+            const { order } = await api("/orders", { method: "POST", body: payload });
+            pendingOrderId = order._id;
+          }
+          await payOnline(pendingOrderId, payload.shippingAddress);
+          localStorage.removeItem("nu_cart");
+          window.location.href = `order-success.html?id=${pendingOrderId}`;
+        } catch (err) {
+          qs("#order-error").textContent = err.message === "PAYMENT_CANCELLED"
+            ? "The payment was not completed. Your order is saved — tap “Pay Now” to try again."
+            : err.message;
+          btn.disabled = false;
+          btn.textContent = "Pay Now";
+        }
+        return;
+      }
 
       try {
         const { order } = await api("/orders", { method: "POST", body: payload });
