@@ -8,14 +8,12 @@ const { sendWhatsAppMessage, buildWaLink } = require("../utils/whatsapp");
 const router = express.Router();
 
 // POST /api/orders - place a new order (customer, logged in)
-// NOTE ON PAYMENTS: this starter uses a manual UPI/Bank-transfer flow - the customer pays via
-// the UPI QR code / bank details shown at checkout, then enters the UTR / transaction ID here.
-// The owner verifies it from the admin panel before shipping. To switch to instant online
-// payments later, integrate Razorpay's Checkout on the frontend and, in this route, verify the
-// signature Razorpay sends back before marking payment.status = "Verified" automatically.
+// PAYMENTS: "Card/Online" orders are paid through Razorpay (see routes/paymentRoutes.js) and are
+// marked Verified automatically once the signature checks out. UPI / Bank Transfer / Cash on
+// Delivery keep the manual flow: the owner verifies the UTR from the admin panel.
 router.post("/", protect, async (req, res) => {
   try {
-    const { items, shippingAddress, payment, couponCode, discountAmount, shippingFee } = req.body;
+    const { items, shippingAddress, payment, couponCode, discountAmount } = req.body;
     if (!items || !items.length) return res.status(400).json({ message: "Your cart is empty" });
 
     // Recalculate prices server-side from the database so a tampered request can't change totals
@@ -26,38 +24,50 @@ router.post("/", protect, async (req, res) => {
       if (!product || !product.isActive) {
         return res.status(400).json({ message: `A saree in your cart is no longer available` });
       }
+      const quantity = Number(it.quantity);
+      if (!Number.isInteger(quantity) || quantity < 1 || quantity > 20) {
+        return res.status(400).json({ message: "Please check the quantity of the items in your cart" });
+      }
       const price = product.priceForSize(it.size);
-      itemsTotal += price * it.quantity;
+      itemsTotal += price * quantity;
       finalItems.push({
         product: product._id,
         name: product.name,
         image: product.images[0] || "",
         size: it.size,
-        quantity: it.quantity,
+        quantity,
         price,
       });
     }
 
-    const total = Math.max(0, itemsTotal + (shippingFee || 0) - (discountAmount || 0));
+    // Shipping is worked out here (same rule as the checkout page: free from Rs 1500, else Rs 79)
+    // and the discount is only accepted with a coupon code and capped, because online payments
+    // are marked paid automatically and must not rely on amounts sent by the browser.
+    const finalShippingFee = itemsTotal >= 1500 ? 0 : 79;
+    const finalDiscount = couponCode
+      ? Math.min(Math.max(0, Math.round(Number(discountAmount) || 0)), Math.floor(itemsTotal * 0.5))
+      : 0;
+    const total = Math.max(0, itemsTotal + finalShippingFee - finalDiscount);
+    const isOnline = payment?.method === "Card/Online";
 
     const order = await Order.create({
       user: req.user._id,
       items: finalItems,
       shippingAddress,
       itemsTotal,
-      shippingFee: shippingFee || 0,
-      discountAmount: discountAmount || 0,
+      shippingFee: finalShippingFee,
+      discountAmount: finalDiscount,
       totalAmount: total,
       couponCode: couponCode || "",
       payment: {
         method: payment?.method || "UPI",
-        transactionId: payment?.transactionId || "",
-        status: payment?.transactionId ? "Pending" : "Pending",
+        transactionId: isOnline ? "" : payment?.transactionId || "",
+        status: "Pending",
       },
       statusHistory: [{ status: "Placed", note: "Order placed by customer" }],
     });
 
-    sendMail({
+    if (!isOnline) sendMail({
       to: req.user.email,
       subject: `Order Confirmed - Nandini Unique (#${order._id.toString().slice(-6).toUpperCase()})`,
       html: `<p>Hi ${req.user.name},</p><p>Thank you for shopping with Nandini Unique! Your order <b>#${order._id
