@@ -59,6 +59,8 @@ const orderSchema = new mongoose.Schema(
       transactionId: { type: String, default: "" }, // UTR number / reference number entered by customer
       status: { type: String, enum: ["Pending", "Verified", "Failed", "Refunded"], default: "Pending" },
       paidAt: { type: Date },
+      razorpayOrderId: { type: String, default: "" }, // set for online (Razorpay) payments
+      razorpayPaymentId: { type: String, default: "" },
       verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     },
 
