@@ -98,7 +98,8 @@ router.post("/", protect, adminOnly, upload.array("images", 6), async (req, res)
     });
 
     if (req.files && req.files.length) {
-      body.images = req.files.map((f) => `/uploads/${f.filename}`);
+      // f.path is the permanent Cloudinary https URL set by middleware/upload.js
+      body.images = req.files.map((f) => f.path);
     }
 
     const product = await Product.create(body);
@@ -128,7 +129,7 @@ router.put("/:id", protect, adminOnly, upload.array("images", 6), async (req, re
     // Images already kept by the seller (existing ones they didn't remove), plus any newly
     // uploaded files this request. This lets the admin panel remove individual photos.
     const baseImages = Array.isArray(body.existingImages) ? body.existingImages : product.images;
-    const newImages = req.files && req.files.length ? req.files.map((f) => `/uploads/${f.filename}`) : [];
+    const newImages = req.files && req.files.length ? req.files.map((f) => f.path) : [];
     body.images = [...baseImages, ...newImages];
     delete body.existingImages;
 
