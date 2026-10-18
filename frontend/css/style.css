@@ -127,8 +127,8 @@ nav.main-nav a:hover, nav.main-nav a.active { opacity: 1; border-color: var(--go
   color: var(--ivory);
   overflow: hidden;
 }
-.hero .container { padding: 84px 24px 70px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
-.hero h1 { color: var(--ivory); font-size: clamp(2.1rem, 4vw, 3.2rem); max-width: 11ch; }
+.hero .container { padding: 84px 24px 70px; display: grid; grid-template-columns: 1fr; gap: 40px; align-items: center; }
+.hero h1 { color: var(--ivory); font-size: clamp(2.1rem, 4vw, 3.2rem); max-width: 18ch; }
 .hero p.lede { color: var(--blush); max-width: 46ch; font-size: 1.02rem; }
 .hero .cta-row { display: flex; gap: 14px; margin-top: 26px; flex-wrap: wrap; }
 .hero-motif {
